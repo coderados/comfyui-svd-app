@@ -1,0 +1,177 @@
+{
+  "name": "svd_image_to_video",
+  "version": "1.0.0",
+  "description": "ComfyUI workflow for Stable Video Diffusion image-to-video generation (unrestricted)",
+  "workflow": {
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 576,
+        "batch_size": 1
+      },
+      "unique_id": "3",
+      "type": "latent"
+    },
+    "4": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "",
+        "clip": ["10", 0]
+      },
+      "unique_id": "4",
+      "type": "conditioning"
+    },
+    "5": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "",
+        "clip": ["10", 0]
+      },
+      "unique_id": "5",
+      "type": "conditioning"
+    },
+    "6": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 42,
+        "steps": 25,
+        "cfg": 7.0,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0,
+        "model": ["8", 0],
+        "positive": ["4", 0],
+        "negative": ["5", 0],
+        "latent_image": ["3", 0]
+      },
+      "unique_id": "6",
+      "type": "latent"
+    },
+    "7": {
+      "class_type": "VAEEncode",
+      "inputs": {
+        "pixels": ["11", 0],
+        "vae": ["8", 1]
+      },
+      "unique_id": "7",
+      "type": "latent"
+    },
+    "8": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {
+        "ckpt_name": "stabilityai/stable-video-diffusion-img2vid-xt.safetensors"
+      },
+      "unique_id": "8",
+      "type": "model"
+    },
+    "9": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": ["6", 0],
+        "vae": ["8", 1]
+      },
+      "unique_id": "9",
+      "type": "image"
+    },
+    "10": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "clip_l.yaml",
+        "type": "laion",
+        "base_model": ["8", 2]
+      },
+      "unique_id": "10",
+      "type": "clip"
+    },
+    "11": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "input_image"
+      },
+      "unique_id": "11",
+      "type": "image"
+    },
+    "12": {
+      "class_type": "ImageScale",
+      "inputs": {
+        "image": ["11", 0],
+        "width": 1024,
+        "height": 576,
+        "upscale_method": "bicubic",
+        "crop": "disabled"
+      },
+      "unique_id": "12",
+      "type": "image"
+    },
+    "13": {
+      "class_type": "SaveAnimatedWebp",
+      "inputs": {
+        "fps": 7,
+        "lossless": false,
+        "quality": 95,
+        "webp_data": ["9", 0]
+      },
+      "unique_id": "13",
+      "type": "output"
+    },
+    "14": {
+      "class_type": "VideoCombine",
+      "inputs": {
+        "frame_rate": 7,
+        "loop_count": 0,
+        "filename_prefix": "svd_output",
+        "format": "video/mp4",
+        "frames": ["9", 0]
+      },
+      "unique_id": "14",
+      "type": "output"
+    }
+  },
+  "links": [
+    ["11", 0, "12", 0],
+    ["12", 0, "7", 0],
+    ["8", 0, "6", 0],
+    ["8", 1, "7", 1],
+    ["8", 1, "9", 1],
+    ["10", 0, "4", 0],
+    ["10", 0, "5", 0],
+    ["3", 0, "6", 0],
+    ["4", 0, "6", 1],
+    ["5", 0, "6", 2],
+    ["6", 0, "9", 0],
+    ["9", 0, "14", 0],
+    ["9", 0, "13", 0]
+  ],
+  "parameters": {
+    "model": "stabilityai/stable-video-diffusion-img2vid-xt",
+    "num_frames": 14,
+    "num_inference_steps": 25,
+    "motion_bucket_id": 127,
+    "fps": 7,
+    "cfg": 7.0,
+    "sampler": "euler",
+    "scheduler": "normal",
+    "resolution": [1024, 576],
+    "disable_safety": true,
+    "seed": 42
+  },
+  "node_definitions": {
+    "StableVideoDiffusionSampler": {
+      "output": "LATENT",
+      "description": "SVD sampler node for image-to-video generation",
+      "category": "SVD",
+      "inputs": {
+        "model": "MODEL",
+        "latent": "LATENT",
+        "seed": "INT",
+        "steps": "INT",
+        "cfg": "FLOAT",
+        "motion_bucket_id": "INT",
+        "fps": "INT",
+        "noise_aug_strength": "FLOAT",
+        "decode_chunk_size": "INT"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+--index-url https://download.pytorch.org/whl/cu121
+
+torch==2.3.0+cu121
+torchvision==0.18.0+cu121
+torchaudio==2.3.0+cu121
+
+--index-url https://pypi.org/simple
+
+diffusers==0.29.0
+transformers==4.41.0
+accelerate==0.31.0
+safetensors==0.4.3
+huggingface-hub==0.23.0
+hf-transfer==0.1.6
+fastapi==0.111.0
+uvicorn==0.30.0
+gradio==4.38.0
+pillow==10.3.0
+imageio==2.34.2
+imageio-ffmpeg==0.4.9
+numpy==1.26.4
+omegaconf==2.3.0
+einops==0.8.0
+xformers==0.0.27
+python-multipart==0.0.9
+pydantic==2.7.1
+pydantic-settings==2.3.3
+comfyui-manager==4.2.2

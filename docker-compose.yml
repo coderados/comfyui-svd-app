@@ -1,0 +1,71 @@
+services:
+  svd-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comfyui-svd-image-to-video
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - HF_HOME=/app/models
+      - TRANSFORMERS_CACHE=/app/models
+      - DIFFUSERS_CACHE=/app/models
+      - PYTHONUNBUFFERED=1
+      - MODEL_ID=stabilityai/stable-video-diffusion-img2vid-xt
+      - DISABLE_SAFETY=true
+    volumes:
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+      - ./temp:/app/temp
+      - ./workflows:/app/workflows
+    command: ["sh", "/app/start.sh"]
+    ports:
+      - "7860:7860"
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    shm_size: 16g
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+  model-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: svd-model-downloader
+    runtime: nvidia
+    environment:
+      - HF_HOME=/app/models
+      - TRANSFORMERS_CACHE=/app/models
+      - DIFFUSERS_CACHE=/app/models
+      - MODEL_ID=stabilityai/stable-video-diffusion-img2vid-xt
+    volumes:
+      - ./models:/app/models
+    entrypoint: ["python", "-c", "
+from diffusers import StableVideoDiffusionPipeline
+import torch
+pipe = StableVideoDiffusionPipeline.from_pretrained(
+    'stabilityai/stable-video-diffusion-img2vid-xt',
+    torch_dtype=torch.float16,
+    variant='fp16',
+    cache_dir='/app/models'
+)
+print('Model downloaded successfully')
+"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - download

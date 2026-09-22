@@ -1,0 +1,56 @@
+{
+  "name": "ComfyUI SVD Custom Nodes",
+  "version": "1.0.0",
+  "description": "Custom ComfyUI nodes for Stable Video Diffusion (SVD) image-to-video generation",
+  "nodes": [
+    {
+      "name": "StableVideoDiffusionSampler",
+      "description": "SVD sampler for image-to-video generation",
+      "category": "SVD",
+      "inputs": {
+        "model": {"type": "MODEL", "description": "The SVD model"},
+        "latent": {"type": "LATENT", "description": "Latent tensor"},
+        "seed": {"type": "INT", "default": 42, "description": "Random seed"},
+        "steps": {"type": "INT", "default": 25, "description": "Number of denoising steps"},
+        "cfg": {"type": "FLOAT", "default": 7.0, "description": "CFG scale"},
+        "motion_bucket_id": {"type": "INT", "default": 127, "description": "Motion intensity (1-255)"},
+        "fps": {"type": "INT", "default": 7, "description": "Output FPS"},
+        "noise_aug_strength": {"type": "FLOAT", "default": 0.02, "description": "Noise augmentation"},
+        "decode_chunk_size": {"type": "INT", "default": 8, "description": "VAE decode chunk size"}
+      },
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "description": "Generated latent frames"}
+      ]
+    },
+    {
+      "name": "SVDPipelineLoader",
+      "description": "Load SVD pipeline from diffusers",
+      "category": "SVD",
+      "inputs": {
+        "model_id": {"type": "STRING", "default": "stabilityai/stable-video-diffusion-img2vid-xt", "description": "HuggingFace model ID"},
+        "torch_dtype": {"type": "STRING", "default": "float16", "description": "Torch dtype"},
+        "disable_safety": {"type": "BOOLEAN", "default": true, "description": "Disable safety checker"}
+      },
+      "outputs": [
+        {"name": "PIPELINE", "type": "PIPELINE", "description": "SVD pipeline"}
+      ]
+    },
+    {
+      "name": "ImageToVideoComfy",
+      "description": "Convert image to video using SVD",
+      "category": "SVD",
+      "inputs": {
+        "image": {"type": "IMAGE", "description": "Input image"},
+        "model": {"type": "MODEL", "description": "SVD model"},
+        "num_frames": {"type": "INT", "default": 14, "description": "Number of frames (14-25)"},
+        "motion_bucket_id": {"type": "INT", "default": 127, "description": "Motion intensity"},
+        "fps": {"type": "INT", "default": 7, "description": "Output frame rate"},
+        "seed": {"type": "INT", "default": -1, "description": "Random seed (-1 for random)"},
+        "disable_safety": {"type": "BOOLEAN", "default": true, "description": "Disable safety checker"}
+      },
+      "outputs": [
+        {"name": "VIDEO", "type": "VIDEO", "description": "Generated video frames"}
+      ]
+    }
+  ]
+}

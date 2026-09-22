@@ -1,0 +1,11 @@
+{
+  "custom_nodes": [
+    {
+      "id": "ComfyUI-SVD",
+      "version": "1.0.0",
+      "comfyui_manager_version": "4.2.2",
+      "files": ["https://github.com/kijai/ComfyUI-SVD"],
+      "install_type": "git-clone"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+comfyui:
+  checkpoints:
+    - /app/models/checkpoints
+  models:
+    - /app/models
+  vae:
+    - /app/models/vae
+  lora:
+    - /app/models/lora
+  upscale_models:
+    - /app/models/upscale_models
+  controlnet:
+    - /app/models/controlnet
+  clip:
+    - /app/models/clip
+  embeddings:
+    - /app/models/embeddings
+  custom_nodes:
+    - /app/ComfyUI/custom_nodes
