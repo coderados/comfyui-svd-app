@@ -1,0 +1,37 @@
+# Dependency set for Blackwell GPUs (RTX PRO 6000, B200 — compute capability
+# sm_120). The main requirements.txt pins torch 2.3.0+cu121, and CUDA 12.1 has
+# no sm_120 kernels at all, so on Blackwell it either refuses to run or falls
+# back to an unusably slow path. Blackwell needs CUDA 12.8+ wheels.
+#
+# Build/install with:
+#   pip install -r requirements-blackwell.txt
+#
+# xformers is intentionally absent: there is no cu128 build, and app.py already
+# degrades gracefully (it enables it inside a try/except and falls back to
+# PyTorch's built-in scaled-dot-product attention).
+
+--index-url https://download.pytorch.org/whl/cu128
+
+torch
+torchvision
+
+--index-url https://pypi.org/simple
+
+diffusers>=0.35
+transformers>=4.41,<5
+accelerate
+safetensors
+huggingface-hub
+hf-transfer
+fastapi
+uvicorn
+gradio
+pillow
+imageio
+imageio-ffmpeg
+numpy
+omegaconf
+einops
+python-multipart
+pydantic
+pydantic-settings
