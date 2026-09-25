@@ -49,10 +49,33 @@ docker run -d \
   comfyui-svd-app
 ```
 
+### Blackwell GPUs (RTX PRO 6000, B200)
+
+Blackwell is compute capability **sm_120**. The default build targets CUDA 12.1,
+which has no sm_120 kernels — on a Blackwell card it either fails or falls back
+to an unusably slow path. Build with the CUDA 12.8 requirement set instead:
+
+```bash
+docker build \
+  --build-arg CUDA_IMAGE=nvidia/cuda:12.8.1-devel-ubuntu22.04 \
+  --build-arg REQUIREMENTS_FILE=requirements-blackwell.txt \
+  -t comfyui-svd-app .
+```
+
+`requirements-blackwell.txt` installs torch from the cu128 wheels and omits
+xformers (no cu128 build exists; `app.py` falls back to PyTorch SDPA).
+
+Sanity check on any GPU before generating — the last value must be `(12, 0)` on
+Blackwell, `(8, 9)` on Ada (L40S), `(9, 0)` on Hopper:
+
+```bash
+python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.get_device_capability())"
+```
+
 ### Local Development
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt        # or requirements-blackwell.txt on Blackwell
 python app.py
 ```
 
