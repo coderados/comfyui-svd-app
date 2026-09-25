@@ -4,7 +4,7 @@ import uuid
 import asyncio
 import threading
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 from contextlib import asynccontextmanager
 
 import torch
@@ -34,6 +34,9 @@ pipeline_lock = threading.Lock()
 generation_queue = asyncio.Queue()
 worker_task = None
 
+# Job states for the async API: queued -> processing -> completed | failed
+jobs: Dict[str, dict] = {}
+
 
 class GenerationRequest(BaseModel):
     num_frames: int = Field(default=14, ge=14, le=25)
@@ -53,6 +56,13 @@ class GenerationResponse(BaseModel):
     message: str
     video_url: Optional[str] = None
     workflow_id: Optional[str] = None
+
+
+class JobStatus(BaseModel):
+    job_id: str
+    status: str
+    video_url: Optional[str] = None
+    error: Optional[str] = None
 
 
 def load_pipeline(disable_safety: bool = True):
@@ -181,14 +191,53 @@ def generate_video(**kwargs):
 async def generation_worker():
     while True:
         job = await generation_queue.get()
+        job_id = job["job_id"]
+        jobs[job_id] = {"status": "processing", "video_url": None, "error": None}
         try:
-            job["future"].set_result(
-                generate_video(**job["params"])
-            )
+            video_path = generate_video(**job["params"])
+            video_url = f"/outputs/{Path(video_path).name}"
+            jobs[job_id] = {"status": "completed", "video_url": video_url, "error": None}
+            job["future"].set_result(video_path)
         except Exception as e:
+            jobs[job_id] = {"status": "failed", "video_url": None, "error": str(e)}
             job["future"].set_exception(e)
         finally:
             generation_queue.task_done()
+
+
+async def enqueue_job(
+    image,
+    *,
+    num_frames,
+    num_inference_steps,
+    motion_bucket_id,
+    fps,
+    noise_aug_strength,
+    decode_chunk_size,
+    seed,
+    disable_safety,
+    enable_comfyui,
+):
+    job_id = uuid.uuid4().hex
+    future = asyncio.Future()
+    jobs[job_id] = {"status": "queued", "video_url": None, "error": None}
+    await generation_queue.put({
+        "job_id": job_id,
+        "params": {
+            "image": image,
+            "num_frames": num_frames,
+            "num_inference_steps": num_inference_steps,
+            "motion_bucket_id": motion_bucket_id,
+            "fps": fps,
+            "noise_aug_strength": noise_aug_strength,
+            "decode_chunk_size": decode_chunk_size,
+            "seed": seed,
+            "disable_safety": disable_safety,
+            "enable_comfyui": enable_comfyui,
+        },
+        "future": future,
+    })
+    return job_id, future
 
 
 @asynccontextmanager
@@ -234,25 +283,18 @@ async def generate_endpoint(
 
     image = Image.open(file.file).convert("RGB")
 
-    job_id = uuid.uuid4().hex
-    future = asyncio.Future()
-
-    await generation_queue.put({
-        "job_id": job_id,
-        "params": {
-            "image": image,
-            "num_frames": num_frames,
-            "num_inference_steps": num_inference_steps,
-            "motion_bucket_id": motion_bucket_id,
-            "fps": fps,
-            "noise_aug_strength": noise_aug_strength,
-            "decode_chunk_size": decode_chunk_size,
-            "seed": seed,
-            "disable_safety": disable_safety,
-            "enable_comfyui": enable_comfyui,
-        },
-        "future": future,
-    })
+    job_id, future = await enqueue_job(
+        image,
+        num_frames=num_frames,
+        num_inference_steps=num_inference_steps,
+        motion_bucket_id=motion_bucket_id,
+        fps=fps,
+        noise_aug_strength=noise_aug_strength,
+        decode_chunk_size=decode_chunk_size,
+        seed=seed,
+        disable_safety=disable_safety,
+        enable_comfyui=enable_comfyui,
+    )
 
     try:
         video_path = await asyncio.wait_for(future, timeout=300)
@@ -268,6 +310,48 @@ async def generate_endpoint(
         raise HTTPException(status_code=504, detail="Generation timeout")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/jobs", response_model=JobStatus)
+async def create_job(
+    file: UploadFile = File(...),
+    num_frames: int = Form(14),
+    num_inference_steps: int = Form(25),
+    motion_bucket_id: int = Form(127),
+    fps: int = Form(7),
+    noise_aug_strength: float = Form(0.02),
+    decode_chunk_size: int = Form(8),
+    seed: Optional[int] = Form(None),
+    disable_safety: bool = Form(True),
+    enable_comfyui: bool = Form(False),
+):
+    """Queue a generation and return immediately, so callers can poll /jobs/{id}."""
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    image = Image.open(file.file).convert("RGB")
+
+    job_id, _ = await enqueue_job(
+        image,
+        num_frames=num_frames,
+        num_inference_steps=num_inference_steps,
+        motion_bucket_id=motion_bucket_id,
+        fps=fps,
+        noise_aug_strength=noise_aug_strength,
+        decode_chunk_size=decode_chunk_size,
+        seed=seed,
+        disable_safety=disable_safety,
+        enable_comfyui=enable_comfyui,
+    )
+    return JobStatus(job_id=job_id, status="queued")
+
+
+@app.get("/jobs/{job_id}", response_model=JobStatus)
+async def get_job(job_id: str):
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Unknown job id")
+    return JobStatus(job_id=job_id, **job)
 
 
 @app.get("/outputs/{filename}")
