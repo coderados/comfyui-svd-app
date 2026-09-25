@@ -1,4 +1,14 @@
-FROM nvidia/cuda:12.1-devel-ubuntu22.04
+# CUDA base and requirement set are selectable so the same Dockerfile covers
+# Ada/Hopper and Blackwell:
+#   Ada / Hopper (L40S, A100, 4090):  docker build -t comfyui-svd-app .
+#   Blackwell (RTX PRO 6000, B200):   docker build \
+#       --build-arg CUDA_IMAGE=nvidia/cuda:12.8.1-devel-ubuntu22.04 \
+#       --build-arg REQUIREMENTS_FILE=requirements-blackwell.txt \
+#       -t comfyui-svd-app .
+ARG CUDA_IMAGE=nvidia/cuda:12.1-devel-ubuntu22.04
+FROM ${CUDA_IMAGE}
+
+ARG REQUIREMENTS_FILE=requirements.txt
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -17,8 +27,8 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements.txt requirements-blackwell.txt ./
+RUN pip install -r ${REQUIREMENTS_FILE}
 
 COPY . .
 RUN chmod +x start.sh
