@@ -3,6 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Blackwell (RTX PRO 6000 / B200, sm_120) needs CUDA 12.8 wheels — uncomment:
+      # args:
+      #   CUDA_IMAGE: nvidia/cuda:12.8.1-devel-ubuntu22.04
+      #   REQUIREMENTS_FILE: requirements-blackwell.txt
     container_name: comfyui-svd-image-to-video
     runtime: nvidia
     environment:
